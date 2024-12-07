@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 
 import JsonView from "react18-json-view";
 import "react18-json-view/src/style.css";
@@ -16,10 +16,37 @@ import { runQuery } from "@/lib/actions";
 
 import { Loader } from "lucide-react";
 
+function ConfigBar(setProjectId, setDataset, projectId, dataset) {
+	const searchParams = useSearchParams();
+
+	// sync search params with state
+	useEffect(() => {
+		if (searchParams.get("projectId")) {
+			setProjectId(searchParams.get("projectId"));
+		}
+		if (searchParams.get("dataset")) {
+			setDataset(searchParams.get("dataset"));
+		}
+	}, []);
+	return (
+		<div className="flex justify-between bg-background border p-2 rounded">
+			<div className="flex text-foreground gap-3">
+				<div className="grid w-full max-w-sm items-center gap-1.5">
+					{/* <Label htmlFor="projectID">project Id</Label> */}
+					<Input type="text" value={projectId} onChange={(e) => setProjectId(e.target.value)} id="projectId" placeholder="sanity projectId" />
+				</div>
+				<div className="grid w-full max-w-sm items-center gap-1.5">
+					{/* <Label htmlFor="dataset">dataset</Label> */}
+					<Input type="text" value={dataset} onChange={(e) => setDataset(e.target.value)} id="dataset" placeholder="dataset" />
+				</div>
+			</div>
+		</div>
+	);
+}
+
 export default function Page() {
 	const router = useRouter();
 	const pathname = usePathname();
-	const searchParams = useSearchParams();
 
 	const [data, setData] = useState([]);
 	const [projectId, setProjectId] = useState("");
@@ -39,30 +66,11 @@ export default function Page() {
 		return () => clearTimeout(navigate);
 	}, [projectId, dataset]);
 
-	// sync search params with state
-	useEffect(() => {
-		if (searchParams.get("projectId")) {
-			setProjectId(searchParams.get("projectId"));
-		}
-		if (searchParams.get("dataset")) {
-			setDataset(searchParams.get("dataset"));
-		}
-	}, []);
-
 	return (
 		<div className="h-[100dvh] flex-1 w-full flex flex-col p-10 bg-black dark gap-3">
-			<div className="flex justify-between bg-background border p-2 rounded">
-				<div className="flex text-foreground gap-3">
-					<div className="grid w-full max-w-sm items-center gap-1.5">
-						{/* <Label htmlFor="projectID">project Id</Label> */}
-						<Input type="text" value={projectId} onChange={(e) => setProjectId(e.target.value)} id="projectId" placeholder="sanity projectId" />
-					</div>
-					<div className="grid w-full max-w-sm items-center gap-1.5">
-						{/* <Label htmlFor="dataset">dataset</Label> */}
-						<Input type="text" value={dataset} onChange={(e) => setDataset(e.target.value)} id="dataset" placeholder="dataset" />
-					</div>
-				</div>
-			</div>
+			<Suspense fallback={<Loader className="animate-spin" />}>
+				<ConfigBar setProjectId={setProjectId} setDataset={setDataset} projectId={projectId} dataset={dataset} />
+			</Suspense>
 			<ResizablePanelGroup direction="horizontal" className="flex-1 rounded-lg border bg-background text-foreground">
 				<ResizablePanel defaultSize={25}>
 					<div className="flex h-full flex-col">
