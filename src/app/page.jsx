@@ -16,7 +16,7 @@ import { runQuery } from "@/lib/actions";
 
 import { Loader } from "lucide-react";
 
-function ConfigBar(setProjectId, setDataset, projectId, dataset) {
+function ConfigBar({setProjectId, setDataset, projectId, dataset}) {
 	const searchParams = useSearchParams();
 
 	// sync search params with state
