@@ -11,12 +11,13 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { runQuery } from "@/lib/actions";
 
 import { Loader } from "lucide-react";
 
-function ConfigBar({setProjectId, setDataset, projectId, dataset}) {
+function ConfigBar({ setProjectId, setDataset, setPerspective, projectId, dataset, perspective }) {
 	const searchParams = useSearchParams();
 
 	// sync search params with state
@@ -26,6 +27,9 @@ function ConfigBar({setProjectId, setDataset, projectId, dataset}) {
 		}
 		if (searchParams.get("dataset")) {
 			setDataset(searchParams.get("dataset"));
+		}
+		if (searchParams.get("perspective")) {
+			setPerspective(searchParams.get("perspective"));
 		}
 	}, []);
 	return (
@@ -39,6 +43,18 @@ function ConfigBar({setProjectId, setDataset, projectId, dataset}) {
 					{/* <Label htmlFor="dataset">dataset</Label> */}
 					<Input type="text" value={dataset} onChange={(e) => setDataset(e.target.value)} id="dataset" placeholder="dataset" />
 				</div>
+				<Select onValueChange={(value)=>setPerspective(value)} defaultValue="raw" className="w-full max-w-sm">
+					<SelectTrigger>
+						<SelectValue placeholder="Perspective" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectGroup>
+							<SelectLabel>Perspective</SelectLabel>
+							<SelectItem value="raw">Raw</SelectItem>
+							<SelectItem value="published">Published</SelectItem>
+						</SelectGroup>
+					</SelectContent>
+				</Select>
 			</div>
 		</div>
 	);
@@ -52,6 +68,8 @@ export default function Page() {
 	const [projectId, setProjectId] = useState("");
 	const [dataset, setDataset] = useState("");
 	const [query, setQuery] = useState("");
+	const [perspective, setPerspective] = useState("raw");
+
 	const [fetchStatus, setFetchStatus] = useState("idle");
 
 	// sync state with search params on state change
@@ -60,16 +78,17 @@ export default function Page() {
 			const queryParameters = new URLSearchParams([
 				["projectId", projectId],
 				["dataset", dataset],
+				["perspective", perspective],
 			]).toString();
 			router.push(`${pathname}?${queryParameters}`);
 		}, 500);
 		return () => clearTimeout(navigate);
-	}, [projectId, dataset]);
+	}, [projectId, dataset,perspective]);
 
 	return (
 		<div className="h-[100dvh] flex-1 w-full flex flex-col p-10 bg-black dark gap-3">
 			<Suspense fallback={<Loader className="animate-spin" />}>
-				<ConfigBar setProjectId={setProjectId} setDataset={setDataset} projectId={projectId} dataset={dataset} />
+				<ConfigBar setProjectId={setProjectId} setDataset={setDataset} projectId={projectId} dataset={dataset} setPerspective={setPerspective} perspective={perspective}/>
 			</Suspense>
 			<ResizablePanelGroup direction="horizontal" className="flex-1 rounded-lg border bg-background text-foreground">
 				<ResizablePanel defaultSize={25}>
@@ -83,7 +102,7 @@ export default function Page() {
 									onClick={async () => {
 										try {
 											setFetchStatus("loading");
-											const result = await runQuery(query, { projectId, dataset });
+											const result = await runQuery(query, { projectId, dataset, perspective });
 											setData(result);
 											setFetchStatus("idle");
 										} catch (error) {
