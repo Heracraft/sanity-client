@@ -43,7 +43,7 @@ function ConfigBar({ setProjectId, setDataset, setPerspective, projectId, datase
 					{/* <Label htmlFor="dataset">dataset</Label> */}
 					<Input type="text" value={dataset} onChange={(e) => setDataset(e.target.value)} id="dataset" placeholder="dataset" />
 				</div>
-				<Select onValueChange={(value)=>setPerspective(value)} defaultValue="raw" className="w-full max-w-sm">
+				<Select value={perspective} onValueChange={(value)=>setPerspective(value)} defaultValue="raw" className="w-full max-w-sm">
 					<SelectTrigger>
 						<SelectValue placeholder="Perspective" />
 					</SelectTrigger>
