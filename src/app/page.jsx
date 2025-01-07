@@ -326,7 +326,9 @@ export default function Page() {
 							<button
 								onClick={() => {
 									let newTabId = nanoid(3);
-									setQueryTabs({ ...queryTabs, newTabId: { name: "New Tab" } });
+									let temp={...queryTabs}
+									temp[newTabId] = { name: "New Tab", query: "", data: [] };
+									setQueryTabs(temp);
 									setCurrentTab(newTabId);
 								}}
 								className="grid place-content-center px-4 h-full hover:bg-accent"
@@ -362,7 +364,7 @@ export default function Page() {
 											<TabsContent value="history" className="gap-3 !mt-0 first:[&>*]:mt-3 flex flex-col overflow-y-auto thin-scrollbar">
 												{/* <div className="flex flex-col  !flex-shrink-0 thin-scrollbar"> */}
 												{queryHistory.length === 0 && <span className="text-muted-foreground">No history</span>}
-												{queryHistory.map((query, index) => (
+												{[...queryHistory].reverse().map((query, index) => (
 													<div
 														key={index}
 														className="flex items-center gap-2 w-full group"
