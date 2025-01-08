@@ -1,14 +1,19 @@
 "use client";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense, use } from "react";
 
 import { nanoid } from "nanoid";
 import JsonView from "react18-json-view";
 import "react18-json-view/src/style.css";
 import "react18-json-view/src/dark.css";
 
-import { SidebarProvider, SidebarTrigger, Sidebar, SidebarContent } from "@/components/ui/sidebar";
+import { basicSetup, EditorView } from "codemirror";
+import { EditorState } from "@codemirror/state";
+import { HighlightStyle, syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language";
+import {javascript} from "@codemirror/lang-javascript"
+
+// import { SidebarProvider, SidebarTrigger, Sidebar, SidebarContent } from "@/components/ui/sidebar";
 // import { AppSidebar } from "@/components/app-sidebar";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Button } from "@/components/ui/button";
@@ -225,6 +230,94 @@ function TabHeader({ tabId, currentTab, setCurrentTab, queryTabs, setQueryTabs, 
 	);
 }
 
+
+function GROQEditor({ queryTabs, setQueryTabs, currentTab }) {
+	let initialState;
+
+	const [editorView, setEditorView] = useState(null);
+	const editorWrapper = useRef(null);
+
+	// redundant state to track & sync the editor's text content to queryTabs state. Should find a way to stick to queryTabs as the one source of truth
+	const [docState, setDocState] = useState("");
+
+	const updateCurrentQuery = (query) => {
+		// console.log("update query", currentTab, queryTabs);
+		if (!queryTabs[currentTab]) return;
+
+		let temp = { ...queryTabs };
+		temp[currentTab].query = query;
+		setQueryTabs(temp);
+	};
+
+	useEffect(() => {
+		if (initialState) return;
+
+		// Minimal theme to match the rest of the app
+		let resetTheme = EditorView.theme(
+			{
+				"&": {
+					outlineWidth: "0 !important",
+				},
+				".cm-gutters": {
+					// background: "hsl(0 0% 9%) !important" // --muted-foreground, same as active-line,
+					background: "hsl(0 0% 14.9%) !important", // zinc-800,
+				},
+				".cm-activeLine": {
+					background: "hsl(0 0% 9%/50) !important",
+					// caretColor:"white !important"
+				},
+				".cm-line": {
+					fontFamily: `ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji" !important`,
+					// paddingLeft: "0 !important",
+				},
+			},
+			{ dark: true }
+		);
+
+		// Editor syntax highlighting
+		// const syntaxHighlightingExtension = syntaxHighlighting(createHighlight()); 
+
+		// Editor setup
+		initialState = EditorState.create({
+			doc: queryTabs[currentTab]?.query || "",
+			extensions: [
+				basicSetup,
+				resetTheme,
+				javascript(),
+				// syntaxHighlightingExtension,
+				syntaxHighlighting(defaultHighlightStyle, {fallback: true}),
+				EditorView.updateListener.of((v) => {
+					if (v.docChanged) {
+						setDocState(v.state.doc.toString());
+					}
+				}),
+			],
+		});
+		setEditorView(
+			new EditorView({
+				state: initialState,
+				parent: editorWrapper.current,
+				gutters: [],
+			})
+		);
+	}, []);
+
+	useEffect(() => {
+		if (!editorView) return;
+
+		editorView.dispatch(editorView.state.update({ changes: { from: 0, to: editorView.state.doc.length, insert: queryTabs[currentTab]?.query || "" } }));
+	}, [queryTabs]);
+
+	useEffect(() => {
+		updateCurrentQuery(docState);
+	}, [docState]);
+
+	return (
+		// bg-background h-full !outline-none resize-none px-3
+		<div ref={editorWrapper} className="px-3/" />
+	);
+}
+
 export default function Page() {
 	const router = useRouter();
 	const pathname = usePathname();
@@ -295,6 +388,7 @@ export default function Page() {
 	// sync stored query history with state
 
 	useEffect(() => {
+		// Set up the initial tabs
 		let startingTabs = {};
 		startingTabs[nanoid(3)] = { name: "New Tab", query: "", data: [] };
 		setQueryTabs(startingTabs);
@@ -306,10 +400,9 @@ export default function Page() {
 
 	return (
 		<div>
-			{/* this is getting long */}
-
 			<Collapsible className="h-[100dvh] flex-1 w-full flex p-10 bg-black">
 				<Suspense fallback={<Loader className="animate-spin" />}>
+					{/* this is getting long */}
 					<ConfigBar setProjectId={setProjectId} setDataset={setDataset} projectId={projectId} dataset={dataset} setPerspective={setPerspective} perspective={perspective} apiVersion={apiVersion} setApiVersion={setApiVersion} setCustomApiVersion={setCustomApiVersion} customApiVersion={customApiVersion} setToken={setToken} token={token} />
 				</Suspense>
 				<div className="flex flex-col flex-1">
@@ -326,7 +419,7 @@ export default function Page() {
 							<button
 								onClick={() => {
 									let newTabId = nanoid(3);
-									let temp={...queryTabs}
+									let temp = { ...queryTabs };
 									temp[newTabId] = { name: "New Tab", query: "", data: [] };
 									setQueryTabs(temp);
 									setCurrentTab(newTabId);
@@ -338,12 +431,14 @@ export default function Page() {
 						</div>
 					</div>
 					<ResizablePanelGroup direction="horizontal" className="flex-1 border bg-background text-foreground">
-						<ResizablePanel defaultSize={25}>
+						<ResizablePanel defaultSize={45}>
 							<div className="flex h-full flex-col">
 								<ResizablePanelGroup direction="vertical" className="text-foreground">
 									<ResizablePanel defaultSize={75} className="flex h-full flex-col">
 										<span className="px-3 pt-3 text-muted-foreground">Query</span>
-										<textarea
+										<GROQEditor queryTabs={queryTabs} setQueryTabs={setQueryTabs} currentTab={currentTab} />
+
+										{/* <textarea
 											value={queryTabs[currentTab]?.query || ""}
 											onChange={(e) => {
 												let temp = { ...queryTabs };
@@ -351,7 +446,7 @@ export default function Page() {
 												setQueryTabs(temp);
 											}}
 											className="bg-background h-full !outline-none resize-none px-3"
-										></textarea>
+										></textarea> */}
 									</ResizablePanel>
 									<ResizableHandle withHandle />
 									<ResizablePanel defaultSize={25} className="border-b p-3">
@@ -483,7 +578,7 @@ export default function Page() {
 							</div>
 						</ResizablePanel>
 						<ResizableHandle withHandle />
-						<ResizablePanel defaultSize={75} className="">
+						<ResizablePanel defaultSize={55} className="">
 							<div className="p-3 overflow-y-scroll max-h-full thin-scrollbar">
 								{/* <span className="font-semibold">Content</span> */}
 								<span className="text-muted-foreground">Result</span>
